@@ -14,10 +14,23 @@ import random
 from midiutil import MIDIFile
 import math
 
-def generateDuration (i, n, range = [0,1]):
-	return (math.sin(-1 * math.radians(math.pi * i/n)) * range[0]) + (range[1] - range[0])
+# Function to generate a smooth duration difference.
+# This is so that the starting notes are gapped farther apart, the notes in the middle are gapped close together
+# and the notes towards the end are again gapped further apart. This creates an effect of Rising Tension, Climax
+# and finally, Free-falling.
 
-tempo = random.randint(60,300)
+def generateLinearDuration(i, n, range = [0, 1]):
+	i = i if (i > n/2) else (n - i)
+	return (float(i * (range[1] - range[0])) / n) + range[0]
+
+# Or you can use the traditional constant difference function
+# This returns the average of max and min duration
+# We mimic the arguments as the above function so they can be
+# easily used interchangeably
+def generateConstantDuration(i, n, range = [0,1]):
+	return range[1]
+
+tempo = random.randint(60,300) # A random tempo between 60 and 300
 
 beat_track   = 0
 beat_channel = 0
@@ -52,6 +65,11 @@ degrees = []
 
 durations = []
 
+# Randomly select a duration function
+
+duration_func = random.choice([generateLinearDuration, generateConstantDuration])
+
+
 beat_degrees.extend(beat_degrees)
 
 for i in range(random.randint(0,4)):
@@ -59,7 +77,7 @@ for i in range(random.randint(0,4)):
 	random.shuffle(beat_degrees)
 
 for i in range(len(beat_degrees)):
-	durations.append(generateDuration(i, len(beat_degrees), [1,3]))
+	durations.append(duration_func(i, len(beat_degrees), [1,2]))
 
 # npd = No. of Notes per beat duration
 npd = random.randint(2, 4) * len(beat_degrees);
@@ -81,9 +99,23 @@ beat_degrees.extend(list(reversed(beat_degrees)))
 durations.extend(list(reversed(durations)))
 degrees.extend(list(reversed(degrees)))
 
-MyMIDI.addProgramChange(beat_track, beat_channel, beat_time, random.randint(0,128))
+# MIDI Programs = Instruments. There are also things like Alarm Clock Sounds, Rain sounds, Echoes, etc.
+# We want to avoid those. So we make a list of allowed beat track instruments and another for allowed
+# Main Track instruments. This also lets us sort instruments correctly for the correct task.
 
-# Add Beats Track to MIDIFile Object
+beat_track_instruments = list(range(8, 15)) +  list(range(32, 39)) + list(range(88, 95)) + list(range(112, 119))
+main_track_instruments = list(range(7)) + list(range(16, 31)) + list(range(40, 79)) + list(range(104, 111))
+
+# Choosing the instruments randomly from the list
+
+beat_track_instr = beat_track_instruments[random.randint(0, len(beat_track_instruments) - 1)]
+main_track_instr = main_track_instruments[random.randint(0, len(main_track_instruments) - 1)]
+
+# Changing Beat Track to Beat Track Instrument
+
+MyMIDI.addProgramChange(beat_track, beat_channel, beat_time, beat_track_instr)
+
+# Add Beat Track to MIDIFile Object
 
 t = 0
 
@@ -92,14 +124,16 @@ for i, pitch in enumerate(beat_degrees):
 	MyMIDI.addNote(beat_track, beat_channel, pitch, beat_time + t, durations[i], beat_volume)
 	t = t + durations[i]
 
-# Add Main Track to MIDIFile Object
+# Changing Main Track to Main Track Instrument
 
+MyMIDI.addProgramChange(music_track, music_channel, music_time, main_track_instr)
+
+# Add Main Track to MIDIFile Object
+total_duration = t
 t = 0
 
-MyMIDI.addProgramChange(music_track, music_channel, music_time, random.randint(0,128))
-
 for i, pitch in enumerate(degrees):
-	duration = durations[i % len(durations)] * len(beat_degrees) / len(degrees)
+	duration = float(durations[i % len(durations)]) * len(beat_degrees) / len(degrees)
 	if(pitch != 0):
 		MyMIDI.addNote(music_track, music_channel, pitch, music_time + t, duration, music_volume)
 		t = t + duration
@@ -110,6 +144,7 @@ for i, pitch in enumerate(degrees):
 
 print("No. of main track notes: %d" % len(degrees))
 print("No. of beat track notes: %d" % len(beat_degrees))
+print("Function used: %s" % duration_func.__name__)
 
 # Writing output to MIDI file
 
