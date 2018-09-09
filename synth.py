@@ -1,4 +1,15 @@
 #!/usr/bin/env python
+
+# Metadata
+__author__ = "Sagnik Modak"
+__license__ = "MIT"
+__version__ = "1.0.0"
+__maintainer__ = "Sagnik Modak"
+__email__ = "sagnikmodak1118@gmail.com"
+__status__ = "Prototype"
+
+# Main Code
+
 import random
 from midiutil import MIDIFile
 import math
@@ -31,6 +42,10 @@ MyMIDI.addTempo(music_track, music_time, music_tempo)
 
 beat_degrees = [60, 62, 64, 65, 67, 69, 71, 72]
 
+# Basic units of degrees from which to build main track notes
+
+# Note also: 0 means unconditional gaps in notes
+
 degree_units = [60, 62, 64, 65, 67, 69, 71, 72, 0]
 
 degrees = []
@@ -60,6 +75,8 @@ for i in range(nrep):
 	durations.extend(durations)
 	degrees.extend(degrees)
 
+# Creating macro-symmetry in degrees and durations by making them palindromic
+
 beat_degrees.extend(list(reversed(beat_degrees)))
 durations.extend(list(reversed(durations)))
 degrees.extend(list(reversed(degrees)))
@@ -75,6 +92,8 @@ for i, pitch in enumerate(beat_degrees):
 	MyMIDI.addNote(beat_track, beat_channel, pitch, beat_time + t, durations[i], beat_volume)
 	t = t + durations[i]
 
+# Add Main Track to MIDIFile Object
+
 t = 0
 
 MyMIDI.addProgramChange(music_track, music_channel, music_time, random.randint(0,128))
@@ -87,12 +106,12 @@ for i, pitch in enumerate(degrees):
 	else:
 		t = t + duration
 
-duration = 0
-for i in range(len(durations)):
-	duration = duration + durations[i]
+# Displaying info
 
 print("No. of main track notes: %d" % len(degrees))
 print("No. of beat track notes: %d" % len(beat_degrees))
+
+# Writing output to MIDI file
 
 with open("output.mid", "wb") as outfile:
 	MyMIDI.writeFile(outfile)
